@@ -1,7 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
-// Big name card for the gift giver the camera is following: TikTok avatar, name and a thank-you for the gift
+// Big name card for the gift giver the camera is following: TikTok avatar and name only
 export const SpotlightCard: React.FC<{ person: { id: string; name: string; avatar?: string } | null }> = ({ person }) => (
   <AnimatePresence>
     {person && (
@@ -21,10 +21,7 @@ export const SpotlightCard: React.FC<{ person: { id: string; name: string; avata
               {person.name.slice(0, 1).toUpperCase()}
             </span>
           )}
-          <div className="leading-tight">
-            <div className="text-[15px] font-bold text-[#fff3d0] max-w-[190px] truncate">{person.name}</div>
-            <div className="text-[10px] text-[#f3d08a] whitespace-nowrap">cảm ơn bạn đã gửi quà tặng</div>
-          </div>
+          <div className="text-[15px] font-bold text-[#fff3d0] max-w-[200px] truncate">{person.name}</div>
         </div>
       </motion.div>
     )}

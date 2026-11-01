@@ -117,13 +117,18 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
     settleOffers();
   }, [offerRequests]);
 
+  const offerKeyRef = useRef(new Map<string, string>()); // username -> the actor doing their offering right now
+
   const specs = useMemo(() => {
     const list: ActorSpec[] = [];
     const offering = new Map(activeOffers.map((o) => [o.username, o]));
+    const offerKeys = new Map<string, string>();
+    offerKeyRef.current = offerKeys;
     const offerFor = (key: string, username: string) => {
       const o = offering.get(username);
       if (!o) return {};
       keyUserRef.current.set(key, username);
+      offerKeys.set(username, key);
       offering.delete(username);
       return { offer: o.id, label: { name: o.displayName || o.username, avatar: o.avatarUrl || undefined } };
     };
@@ -183,8 +188,9 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
       spotQueueRef.current = spotQueueRef.current.filter((q) => now - q.at < 120000);
       if (spotBusyRef.current || now < spotNextAtRef.current) return;
       for (const q of spotQueueRef.current) {
-        const key = [...keyUserRef.current.entries()].find(([, user]) => user === q.username)?.[0];
-        if (!key || !activeRef.current.some((a) => a.username === q.username)) continue;
+        // Follow the actor carrying this offering (not an older seat of the same person)
+        const key = offerKeyRef.current.get(q.username);
+        if (!key) continue;
         spotQueueRef.current = spotQueueRef.current.filter((x) => x !== q);
         spotBusyRef.current = true;
         setSpotKey(key);

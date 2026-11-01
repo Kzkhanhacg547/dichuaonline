@@ -450,9 +450,13 @@ export class TempleScene {
   }
 
   setSpotlight(key: string | null) {
+    if (key === this.spotKey) return;
     this.spotKey = key;
     this.spotReachedBurner = false;
+    this.spotStartedAt = performance.now();
   }
+
+  private spotStartedAt = 0;
 
   private updateSpotlight(dt: number) {
     const actor = this.spotKey ? this.actors.get(this.spotKey) : undefined;
@@ -461,7 +465,9 @@ export class TempleScene {
       // Close in while they walk up and offer; once they turn back after the bows, pull out and end
       const atBurner = actor.isOfferingAtBurner();
       if (atBurner) this.spotReachedBurner = true;
-      if (this.spotReachedBurner && !atBurner) {
+      const secs = (performance.now() - this.spotStartedAt) / 1000;
+      // Done when they turn back after the bows; also give up on someone who never sets off, or after 45 s
+      if ((this.spotReachedBurner && !atBurner) || (!actor.busy && secs > 4) || secs > 45) {
         this.spotKey = null;
         this.onSpotlightEnd();
       } else {
