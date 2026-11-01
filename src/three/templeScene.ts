@@ -260,8 +260,9 @@ class Actor {
   kneelHere(withKneelDown: boolean) {
     this.root.rotation.y = Math.PI;
     this.state = 'kneeling';
-    // Everyone bows on their own clock: first lạy within half a minute, then every 20-30s (never all at once)
-    this.nextBowIn = Math.random() * 30;
+    // Everyone bows over and over on their own clock: a random first start, then 1-3 s of rest between lạy,
+    // so the hall is always bowing but never in unison
+    this.nextBowIn = Math.random() * 4;
     if (withKneelDown && this.actions.kneelDown) this.play('kneelDown', 0.3);
     else this.play('kneel', 0.3, true);
   }
@@ -345,7 +346,7 @@ class Actor {
       this.nextBowIn -= dt;
       if (this.nextBowIn <= 0 && this.bowT < 0) {
         this.bowT = 0;
-        this.nextBowIn = this.bowsAtBurner > 0 ? 0.4 : 20 + Math.random() * 10;
+        this.nextBowIn = this.bowsAtBurner > 0 ? 0.4 : 1 + Math.random() * 2;
       }
     }
     this.applyBow(dt);
