@@ -59,6 +59,7 @@ const AISLE_X = 50;
 const AISLE_BOTTOM_Y = 106;
 // Offerers stand in a row partway up the steps (not up at the burner table),
 // spread wide so five fit without crowding: x offsets from the aisle, in the order spots are filled
+const SPOT_ZOOM = 3.6; // how close the camera gets on a gift giver
 const OFFER_ROW_Y = 66.5; // partway up the steps (user-marked height)
 const OFFER_SPOTS_X = [0, -8, 8, -16, 16];
 
@@ -277,6 +278,11 @@ class Actor {
 
   lastOffer?: string;
   busy = false; // in the middle of offering incense
+
+  // Lighting incense or doing the three bows at the burner (not walking there or back)
+  isOfferingAtBurner() {
+    return this.busy && this.state !== 'walking';
+  }
   spotIndex = -1; // which offering spot they stand on while busy
   onDone?: () => void;
 
@@ -424,6 +430,74 @@ export class TempleScene {
   private clock = new THREE.Clock();
   private frame = 0;
 
+  // Spotlight: a gift giver is followed up close while they walk up and offer incense. The 3D view renders only
+  // the zoomed region (camera view offset, so the people stay sharp), and the same zoom is put on the painted
+  // background and floor layers (zoomEls) as a CSS transform; this scene's own canvas and name plates (selfEl)
+  // get the inverse transform so they keep filling the screen.
+  private viewCam = new THREE.PerspectiveCamera();
+  private zoom = 1;
+  private cx = 0.5;
+  private cy = 0.5;
+  private spotKey: string | null = null;
+  private spotReachedBurner = false;
+  private zoomEls: HTMLElement[] = [];
+  private selfEl?: HTMLElement;
+  onSpotlightEnd: () => void = () => {};
+
+  setZoomTargets(world: HTMLElement[], self: HTMLElement) {
+    this.zoomEls = world;
+    this.selfEl = self;
+  }
+
+  setSpotlight(key: string | null) {
+    this.spotKey = key;
+    this.spotReachedBurner = false;
+  }
+
+  private updateSpotlight(dt: number) {
+    const actor = this.spotKey ? this.actors.get(this.spotKey) : undefined;
+    let tz = 1;
+    if (actor && actor.root.visible) {
+      // Close in while they walk up and offer; once they turn back after the bows, pull out and end
+      const atBurner = actor.isOfferingAtBurner();
+      if (atBurner) this.spotReachedBurner = true;
+      if (this.spotReachedBurner && !atBurner) {
+        this.spotKey = null;
+        this.onSpotlightEnd();
+      } else {
+        tz = SPOT_ZOOM;
+        const p = (actor.head ?? actor.root).getWorldPosition(new THREE.Vector3());
+        p.y -= HEIGHT * 0.15; // frame the whole body, a little below the head
+        p.project(this.camera);
+        const k = Math.min(1, dt * 2.2);
+        this.cx += ((p.x + 1) / 2 - this.cx) * k;
+        this.cy += ((1 - p.y) / 2 - this.cy) * k;
+      }
+    } else if (this.spotKey) {
+      this.spotKey = null;
+      this.onSpotlightEnd();
+    }
+    this.zoom += (tz - this.zoom) * Math.min(1, dt * 1.6);
+    if (tz === 1 && this.zoom < 1.002) this.zoom = 1;
+    const half = 0.5 / this.zoom;
+    const x0 = Math.min(Math.max(this.cx - half, 0), 1 - 2 * half);
+    const y0 = Math.min(Math.max(this.cy - half, 0), 1 - 2 * half);
+    const world = this.zoom === 1 ? '' : `scale(${this.zoom}) translate(${-x0 * 100}%, ${-y0 * 100}%)`;
+    for (const el of this.zoomEls) {
+      el.style.transformOrigin = '0 0';
+      el.style.transform = world;
+    }
+    if (this.selfEl) {
+      this.selfEl.style.transformOrigin = '0 0';
+      this.selfEl.style.transform = this.zoom === 1 ? '' : `translate(${x0 * 100}%, ${y0 * 100}%) scale(${1 / this.zoom})`;
+    }
+    if (this.zoom > 1) {
+      const size = this.renderer.getSize(new THREE.Vector2());
+      this.viewCam.copy(this.camera);
+      this.viewCam.setViewOffset(size.x, size.y, x0 * size.x, y0 * size.y, size.x / this.zoom, size.y / this.zoom);
+    }
+  }
+
   constructor(
     private canvas: HTMLCanvasElement,
     private assets: DevoteeAssets,
@@ -447,7 +521,8 @@ export class TempleScene {
       if (frames++ % 30 === 0) this.resize();
       const dt = Math.min(this.clock.getDelta(), 0.1);
       for (const a of this.actors.values()) a.update(dt);
-      this.renderer.render(this.scene, this.camera);
+      this.updateSpotlight(dt);
+      this.renderer.render(this.scene, this.zoom > 1.001 ? this.viewCam : this.camera);
       this.placePlates();
     };
     loop();
@@ -548,7 +623,7 @@ export class TempleScene {
       }
       a.head!.getWorldPosition(p);
       p.y += HEIGHT * 0.12;
-      p.project(this.camera);
+      p.project(this.zoom > 1.001 ? this.viewCam : this.camera);
       a.plate.style.display = '';
       a.plate.style.left = `${((p.x + 1) / 2) * 100}%`;
       a.plate.style.top = `${((1 - p.y) / 2) * 100}%`;

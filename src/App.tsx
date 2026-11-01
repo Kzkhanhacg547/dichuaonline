@@ -25,6 +25,7 @@ const IDLE_BLESSING_MS = 90 * 1000; // voice quiet this long -> blessing + share
 const WELCOME_CHECK_MS = 6 * 1000;
 const MAX_WAITING_JOINERS = 30;
 const SEAT_AFTER_JOIN_MS = 10 * 1000;
+const SPOTLIGHT_COINS = 1; // any gift for now (small channel); raise when gifts get frequent
 const POINTS_PER_COIN = 10; // merit board: a 1-coin rose = 10 comments
 
 const RAIN_MS = 60 * 1000;
@@ -128,6 +129,31 @@ export default function App() {
   const [offerers, setOfferers] = useState<GiftEvent[]>([]);
   // Everyone who should go up and offer incense (a gift or an "adidaphat" comment), newest last
   const [offerRequests, setOfferRequests] = useState<OfferRequest[]>([]);
+  // A gift of SPOTLIGHT_COINS+ coins in one go (combos added up within 15 s) gets the close-up camera
+  const [spotlightRequests, setSpotlightRequests] = useState<OfferRequest[]>([]);
+  const giftCoinsRef = useRef(new Map<string, { coins: number; since: number; done: boolean }>());
+  const pendingThanksRef = useRef(new Map<string, { username: string; giftName: string; diamonds: number }>());
+  const readPendingThanks = (username: string) => {
+    const key = username.toLowerCase();
+    const t = pendingThanksRef.current.get(key);
+    if (!t) return;
+    pendingThanksRef.current.delete(key);
+    soundEngine.readGiftAcknowledgment(t.username, t.giftName, t.diamonds);
+  };
+  const requestSpotlightIfBig = (username: string, coins: number, avatarUrl = '') => {
+    const key = username.toLowerCase();
+    const now = Date.now();
+    const prev = giftCoinsRef.current.get(key);
+    const entry = prev && now - prev.since < 15000 ? prev : { coins: 0, since: now, done: false };
+    entry.coins += coins;
+    giftCoinsRef.current.set(key, entry);
+    if (entry.done || entry.coins < SPOTLIGHT_COINS) return;
+    entry.done = true;
+    setSpotlightRequests((p) =>
+      [...p, { id: `spot-${now}-${username}`, username, displayName: maskBanned(username), avatarUrl }].slice(-10)
+    );
+    soundEngine.playTempleBell(0.9);
+  };
   const requestOffer = (username: string, avatarUrl = '') =>
     setOfferRequests((prev) =>
       [...prev, { id: `offer-${Date.now()}-${username}`, username, displayName: maskBanned(username), avatarUrl }].slice(-20)
@@ -286,6 +312,7 @@ export default function App() {
       setCurrentGift(newGift);
       // Newest giver kneels at the main mat (chủ lễ), the previous four move to the small mats
       requestOffer(cleanUser, avatarUrl);
+      requestSpotlightIfBig(cleanUser, totalDiamonds, avatarUrl);
       setOfferers((prev) =>
         [newGift, ...prev.filter((o) => o.username.toLowerCase() !== cleanUser.toLowerCase())].slice(0, 5)
       );
@@ -298,7 +325,7 @@ export default function App() {
         setCurrentGift(null);
       }, 4000);
 
-      // BẢNG CÔNG ĐỨC: every coin of a gift is worth 10 points
+      // TOP THÀNH TÂM: every coin of a gift is worth 10 points
       addMerit(cleanUser, totalDiamonds * POINTS_PER_COIN, avatarUrl, totalDiamonds);
 
       // Update Devotee Crowd (only if they already entered with "adidaphat")
@@ -331,7 +358,13 @@ export default function App() {
       }
 
       // Every gift is thanked by name (soundEngine dedupes combos and skips small gifts when busy)
-      if (config.autoTts) soundEngine.readGiftAcknowledgment(cleanUser, giftName, totalDiamonds);
+      // The name and blessing are read when the close-up starts (onSpotlightStart); if it never starts
+      // (no 3D, or it waits too long in line) they are read anyway after 20 s
+      if (config.autoTts && !pendingThanksRef.current.has(cleanUser.toLowerCase())) {
+        const key = cleanUser.toLowerCase();
+        pendingThanksRef.current.set(key, { username: cleanUser, giftName, diamonds: totalDiamonds });
+        setTimeout(() => readPendingThanks(cleanUser), 20000);
+      }
     },
     [currentGift, config.autoTts]
   );
@@ -514,6 +547,15 @@ export default function App() {
   };
 
   // Latest handlers via ref so the SSE connection opens once instead of on every render
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('demo') !== '1') return;
+    (window as unknown as { __dco: unknown }).__dco = {
+      gift: (name: string, coins: number, avatar = '') =>
+        handlersRef.current.handleTriggerGift('dang_hoa_sen', 'Hoa Hồng', 'Cầu bình an', name, 1, coins, avatar),
+      comment: (name: string, text: string) => handlersRef.current.handleAddComment(name, text),
+    };
+  }, []);
+
   const handlersRef = useRef({ handleTriggerGift, handleAddComment, handleFollow, handleControl, handleJoin, addLikes });
   handlersRef.current = { handleTriggerGift, handleAddComment, handleFollow, handleControl, handleJoin, addLikes };
 
@@ -718,6 +760,8 @@ export default function App() {
         {/* Stage is laid out at 430px wide; zoom it to fill the 1080x1920 capture */}
         <div className="w-[430px] flex flex-col justify-center" style={{ zoom: stageZoom }}>
           <ChanhDienStage
+            onSpotlightStart={readPendingThanks}
+            spotlightRequests={spotlightRequests}
             likeProgress={likeProgress}
             rainUntil={rainUntil}
             config={config}
@@ -755,6 +799,8 @@ export default function App() {
             <div className="lg:col-span-5 flex justify-center">
               <div className="w-full max-w-[430px]">
                 <ChanhDienStage
+                  onSpotlightStart={readPendingThanks}
+                  spotlightRequests={spotlightRequests}
                   likeProgress={likeProgress}
                   rainUntil={rainUntil}
                   config={config}
@@ -805,6 +851,8 @@ export default function App() {
           <div className="flex-1 flex items-center justify-center py-2">
             <div className="w-full max-w-[430px]">
               <ChanhDienStage
+                onSpotlightStart={readPendingThanks}
+                spotlightRequests={spotlightRequests}
                 likeProgress={likeProgress}
                 rainUntil={rainUntil}
                 config={config}

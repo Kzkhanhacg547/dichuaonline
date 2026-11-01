@@ -9,6 +9,7 @@ import { GiftNotificationBanner } from './GiftNotificationBanner';
 import { GoldenLotusBloom } from './GoldenLotusBloom';
 import { FlowerRain, LikeBar } from './LikeRain';
 import { CraneFlight } from './CraneFlight';
+import { SpotlightCard } from './SpotlightCard';
 import { LIKES_PER_RAIN } from '../services/likeRain';
 import {
   Devotee,
@@ -36,6 +37,8 @@ interface ChanhDienStageProps {
   onStopDharma?: () => void;
   likeProgress?: number; // likes toward the next flower rain
   rainUntil?: number; // flower rain lasts until this time (ms)
+  spotlightRequests?: OfferRequest[]; // gift givers the camera follows up close
+  onSpotlightStart?: (username: string) => void; // read their name and blessing as the close-up begins
 }
 
 const MAX_AT_BURNER = 5; // up to five people light incense together (5 spots at the burner), the rest wait in line
@@ -58,6 +61,8 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
   onStopDharma,
   likeProgress = 0,
   rainUntil = 0,
+  spotlightRequests = [],
+  onSpotlightStart,
 }) => {
   // Re-render when a flower rain ends so the like bar switches back to counting
   const [raining, setRaining] = useState(false);
@@ -145,6 +150,59 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
   }, [devotees, leaderboardDonors, activeOffers]);
 
 
+  // Spotlight: one gift giver at a time is followed up close while they walk up, light incense and bow.
+  // They go to the front of the incense line (even if they offered less than a minute ago).
+  const bgRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
+  const [spotKey, setSpotKey] = useState<string | null>(null);
+  const [spotPerson, setSpotPerson] = useState<{ id: string; name: string; avatar?: string } | null>(null);
+  const spotQueueRef = useRef<Array<OfferRequest & { at: number }>>([]);
+  const spotSeenRef = useRef(new Set<string>());
+  const spotBusyRef = useRef(false);
+  const spotNextAtRef = useRef(0);
+  const onSpotlightStartRef = useRef(onSpotlightStart);
+  onSpotlightStartRef.current = onSpotlightStart;
+
+  useEffect(() => {
+    for (const r of spotlightRequests) {
+      if (spotSeenRef.current.has(r.id)) continue;
+      spotSeenRef.current.add(r.id);
+      if (spotQueueRef.current.some((q) => q.username === r.username)) continue;
+      spotQueueRef.current.push({ ...r, at: Date.now() });
+      if (!activeRef.current.some((a) => a.username === r.username)) {
+        queueRef.current = [{ ...r, id: `${r.id}-spot` }, ...queueRef.current.filter((q) => q.username !== r.username)];
+        lastOfferAtRef.current.set(r.username, Date.now());
+        settleOffers();
+      }
+    }
+  }, [spotlightRequests]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      const now = Date.now();
+      spotQueueRef.current = spotQueueRef.current.filter((q) => now - q.at < 120000);
+      if (spotBusyRef.current || now < spotNextAtRef.current) return;
+      for (const q of spotQueueRef.current) {
+        const key = [...keyUserRef.current.entries()].find(([, user]) => user === q.username)?.[0];
+        if (!key || !activeRef.current.some((a) => a.username === q.username)) continue;
+        spotQueueRef.current = spotQueueRef.current.filter((x) => x !== q);
+        spotBusyRef.current = true;
+        setSpotKey(key);
+        onSpotlightStartRef.current?.(q.username);
+        setSpotPerson({ id: q.id, name: q.displayName || q.username, avatar: q.avatarUrl || undefined });
+        return;
+      }
+    }, 400);
+    return () => clearInterval(t);
+  }, []);
+
+  const endSpotlight = () => {
+    spotBusyRef.current = false;
+    spotNextAtRef.current = Date.now() + 6000; // a short breath before the next one
+    setSpotKey(null);
+    setSpotPerson(null);
+  };
+
   // Exact background path uploaded by the user
   const templeBgUrl = '/assets/bg/chanh-dien-2-hd.webp'; // AI-upscaled (Real-ESRGAN x4) from chanh-dien-2.webp
 
@@ -157,12 +215,20 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
       }`}
     >
       {/* 1. REAL TEMPLE BACKGROUND IMAGE */}
-      <div className="absolute inset-0 z-0">
+      <div ref={bgRef} className="absolute inset-0 z-0">
         <img
           src={templeBgUrl}
           alt="Chánh Điện Kim Phật"
           className="w-full h-full object-cover object-center"
           style={{ filter: 'brightness(0.8) saturate(0.95)' }}
+        />
+        {/* 4K copy (the full AI upscale) shown only while the camera is close on a gift giver, so the hall stays sharp */}
+        <img
+          src="/assets/bg/chanh-dien-2-4k.webp"
+          alt=""
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700"
+          style={{ filter: 'brightness(0.8) saturate(0.95)', opacity: spotKey ? 1 : 0 }}
         />
         {/* Slow soft halo behind the Buddha's head */}
         <div className="absolute left-1/2 -translate-x-1/2 top-[20%] w-[38%] aspect-square rounded-full bg-radial from-amber-200/25 via-amber-400/10 to-transparent mix-blend-screen animate-pulse-gold pointer-events-none" />
@@ -176,7 +242,7 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
         isGiftActive={isGiftActive}
       />
 
-      {/* 3. COMPACT BẢNG CÔNG ĐỨC AT TOP-RIGHT (Only renders if donors exist) */}
+      {/* 3. TOP THÀNH TÂM (merit board) under the adidaphat hint */}
       <CompactBangCongDuc topDonors={leaderboardDonors} />
 
       {/* 4. GIFT: golden lotus opens and pink lotus petals fall, bigger and brighter for bigger gifts */}
@@ -221,7 +287,7 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
 
       {/* 7. OFFERING AREA (burner, chủ lễ, 4 mats, top 6) and the side rows of devotees */}
       {/* Floor (carpet, burner, lotus, mats) under the 3D people; names and chat bubbles over them */}
-      <div className="absolute inset-0 z-20">
+      <div ref={worldRef} className="absolute inset-0 z-20">
         <div className="absolute inset-0 z-[1]">
           <OfferingArea
             offering={currentGift}
@@ -247,6 +313,9 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
               const user = keyUserRef.current.get(key);
               if (!away && user) settleOffers(user);
             }}
+            spotlightKey={spotKey}
+            zoomTargets={() => [bgRef.current, worldRef.current].filter((el): el is HTMLDivElement => Boolean(el))}
+            onSpotlightEnd={endSpotlight}
           />
         </div>
         {has3D && (
@@ -262,6 +331,8 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
           </div>
         )}
       </div>
+
+      <SpotlightCard person={spotPerson} />
 
       {/* 8. GIFT NOTIFICATION BANNER WITH COMBO MULTIPLIER */}
       <GiftNotificationBanner currentGift={currentGift} />
