@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 // Bar under the chant that fills with likes; every `goal` likes the hall rains flowers for a minute.
 export const LikeBar: React.FC<{ progress: number; goal: number; raining: boolean }> = ({ progress, goal, raining }) => (
-  <div className="absolute top-[16.8%] left-1/2 -translate-x-1/2 w-[56%] z-30 pointer-events-none select-none font-temple">
+  <div className="absolute top-[16.8%] left-1/2 -translate-x-1/2 w-[72%] z-30 pointer-events-none select-none font-temple">
     <div className="relative h-3 rounded-full border border-[#c9973f]/70 bg-black/45 overflow-hidden">
       <div
         className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-pink-400 via-pink-300 to-amber-200 transition-[width] duration-200"
         style={{ width: `${raining ? 100 : Math.min(100, (progress / goal) * 100)}%` }}
       />
       <div className="absolute inset-0 flex items-center justify-center text-[7.5px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-        {raining ? '🌸 Mưa hoa ban phước lành 🌸' : `❤️ ${progress}/${goal} · Thả đầy tim, mưa hoa ban phước lành`}
+        {raining ? '🌸 Mưa hoa ban phước lành 🌸' : `❤️ ${progress}/${goal} tim – Mưa hoa sen, gửi ngàn lời chúc bình an!`}
       </div>
     </div>
   </div>
