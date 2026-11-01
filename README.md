@@ -1,8 +1,8 @@
 # Đi Chùa Online
 
-App chánh điện 3D để live TikTok kiểu chùa online. Người xem gõ `adidaphat` là có nhân vật mang tên và avatar TikTok của họ đi lên dâng hương. Ai tặng quà thì sen vàng nở và cánh sen hồng rơi khắp chùa, giọng đọc gọi tên cảm ơn. Thả đủ tim thì mưa hoa.
+App không gian thư giãn có chánh điện 3D để live TikTok. Người xem gõ `adidaphat` là có nhân vật mang tên và avatar TikTok của họ đi lên dâng hương. Ai tặng quà thì sen vàng nở và cánh sen hồng rơi khắp chùa, giọng đọc gọi tên cảm ơn và gửi lời chúc. Thả đủ tim thì mưa hoa.
 
-Đây là game giải trí. Quà tặng chỉ để nhận lời chúc, không phải tiền cúng dường hay để cầu may.
+Đây là không gian thư giãn mang tính giải trí, không phải chùa và không đại diện cho tổ chức tôn giáo nào. Quà tặng chỉ để nhận lời chúc, không phải tiền cúng dường hay để cầu may.
 
 ## Tính năng
 

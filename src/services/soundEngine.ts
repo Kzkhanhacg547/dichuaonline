@@ -640,7 +640,8 @@ class SoundEngine {
   }
 
   /**
-   * "Phật tử X vừa thành tâm dâng lễ lên Đức Phật." plus a random family blessing, read before anything else waiting.
+   * "Tâm Tịnh Tâm An cảm ơn bạn X đã gửi quà tặng." plus a random family blessing, read before anything else waiting.
+   * (Gifts are thanked as gifts, never as offerings to the Buddha: the on-screen notice says they are not.)
    * Combos and repeat gifts from the same person are thanked once per 30s (gifts of 99+ coins are always thanked).
    */
   public readGiftAcknowledgment(username: string, _giftName: string, diamonds = 0) {
@@ -652,7 +653,7 @@ class SoundEngine {
     this.lastGiftAckMap.set(key, now);
 
     // Gift givers go first: read right after the sentence playing now, ahead of greetings and other lines
-    this.priorityQueue.push(`Phật tử ${formatUsernameForTts(username)} vừa thành tâm dâng lễ lên Đức Phật.`);
+    this.priorityQueue.push(`Tâm Tịnh Tâm An cảm ơn bạn ${formatUsernameForTts(username)} đã gửi quà tặng.`);
     this.priorityQueue.push(FAMILY_BLESSINGS[Math.floor(Math.random() * FAMILY_BLESSINGS.length)]);
     if (!this.isSpeaking) this.processQueue();
   }
@@ -703,7 +704,7 @@ class SoundEngine {
     if (names.length === 0 || this.isDharmaActive) return;
     const spoken = names.map((n) => `bạn ${formatUsernameForTts(n)}`);
     const list = spoken.length > 1 ? `${spoken.slice(0, -1).join(', ')} và ${spoken[spoken.length - 1]}` : spoken[0];
-    this.speakPreferredBuddhistVoice(`A Di Đà Phật, chùa xin chào ${list} vừa ghé vào.`);
+    this.speakPreferredBuddhistVoice(`A Di Đà Phật, Tâm Tịnh Tâm An xin chào ${list} vừa ghé vào.`);
   }
 
   private lastBlessingIndex = -1;
@@ -736,14 +737,14 @@ class SoundEngine {
       const spoken = recentNames.map((n) => `bạn ${formatUsernameForTts(n)}`);
       const list = spoken.length > 1 ? `${spoken.slice(0, -1).join(', ')} và ${spoken[spoken.length - 1]}` : spoken[0];
       this.speakPreferredBuddhistVoice(
-        `Dạ, con cảm ơn ${list} đã ghé chùa lễ Phật. Quý vị nhớ bấm chia sẻ live cho bạn bè, người thân cùng nghe nhé. ${this.pickWish(recentNames.length > 1 ? 'quý vị' : 'bạn')}`
+        `Dạ, Tâm Tịnh Tâm An cảm ơn ${list} đã ghé chơi. Quý vị nhớ bấm chia sẻ live cho bạn bè, người thân cùng nghe nhé. ${this.pickWish(recentNames.length > 1 ? 'quý vị' : 'bạn')}`
       );
       return;
     }
     const phrases = [
       'Nam mô A Di Đà Phật. Quý phật tử nhớ bấm chia sẻ live cho bạn bè, người thân cùng vào nghe nhé. Chúc cả nhà phước lộc đầy nhà, vạn sự hanh thông ạ.',
       'Dạ, ai nghe thấy lòng nhẹ nhõm thì chia sẻ live này cho người thương cùng nghe với ạ. Chúc quý vị phước lộc đầy nhà, vạn sự hanh thông.',
-      'A Di Đà Phật. Thêm một người cùng nghe là thêm một phần an lành. Quý vị bấm chia sẻ giúp chùa nhé, chúc phước lộc đầy nhà, vạn sự hanh thông ạ.',
+      'A Di Đà Phật. Thêm một người cùng nghe là thêm một phần an lành. Quý vị bấm chia sẻ giúp kênh nhé, chúc phước lộc đầy nhà, vạn sự hanh thông ạ.',
     ];
     this.speakPreferredBuddhistVoice(phrases[this.shareReminderIndex++ % phrases.length]);
   }

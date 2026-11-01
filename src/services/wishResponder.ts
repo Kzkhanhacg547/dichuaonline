@@ -42,11 +42,11 @@ export function detectWish(comment: string): WishTopic | null {
 // "{name}" is filled with the spoken name
 const BLESSINGS: Record<WishTopic, string[]> = {
   exam: [
-    'Dạ, chùa nghe bạn {name} cầu chuyện thi cử. Chúc bạn ôn bài suôn sẻ, vào phòng thi thật bình tĩnh, đạt điểm cao như mong muốn ạ.',
+    'Dạ, Tâm Tịnh Tâm An nghe bạn {name} nhắc chuyện thi cử. Chúc bạn ôn bài suôn sẻ, vào phòng thi thật bình tĩnh, đạt điểm cao như mong muốn ạ.',
     'A Di Đà Phật, chúc bạn {name} học đâu nhớ đó, thi cử đỗ đạt, kết quả làm cả nhà vui lòng ạ.',
   ],
   health: [
-    'Dạ, chùa nguyện cầu cho bạn {name} và người thân sớm khỏe mạnh, ăn ngon ngủ yên, bệnh tật tiêu trừ ạ.',
+    'Dạ, chúc bạn {name} và người thân sớm khỏe mạnh, ăn ngon ngủ yên ạ.',
     'A Di Đà Phật, chúc nhà bạn {name} ai cũng mạnh khỏe, người đang mệt sớm bình phục ạ.',
   ],
   love: [
@@ -55,7 +55,7 @@ const BLESSINGS: Record<WishTopic, string[]> = {
   ],
   family: [
     'Dạ, chúc gia đình bạn {name} trên thuận dưới hòa, cha mẹ khỏe mạnh, con cháu ngoan hiền ạ.',
-    'A Di Đà Phật, chùa cầu cho nhà bạn {name} luôn êm ấm, mọi người thương yêu nhau ạ.',
+    'A Di Đà Phật, chúc nhà bạn {name} luôn êm ấm, mọi người thương yêu nhau ạ.',
   ],
   work: [
     'Dạ, chúc bạn {name} công việc hanh thông, gặp sếp tốt đồng nghiệp hiền, sớm được như ý ạ.',
@@ -66,7 +66,7 @@ const BLESSINGS: Record<WishTopic, string[]> = {
     'A Di Đà Phật, chúc bạn {name} tài lộc dồi dào, nợ nần sớm xong, của cải đủ đầy ạ.',
   ],
   peace: [
-    'Dạ, chùa cầu cho bạn {name} tai qua nạn khỏi, mọi việc bình an thuận lợi ạ.',
+    'Dạ, chúc bạn {name} mọi việc bình an, thuận lợi ạ.',
     'A Di Đà Phật, chúc bạn {name} gặp nhiều may mắn, đi đâu cũng được che chở bình an ạ.',
   ],
 };

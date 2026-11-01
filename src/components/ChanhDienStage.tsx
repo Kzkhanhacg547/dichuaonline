@@ -251,7 +251,7 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
       {/* Notice scrolling in a thin strip under the like bar (the channel owner's wording) */}
       <div className="absolute top-[20.3%] left-[8%] right-[8%] z-30 overflow-hidden pointer-events-none rounded-full bg-black/35 border border-[#c9973f]/40">
         <div className="w-max whitespace-nowrap py-0.5 text-[9px] text-[#f3d08a]/90 font-temple animate-notice-scroll">
-          Xin lưu ý, đây là game giải trí mang tinh thần an nhiên; quà tặng chỉ để nhận lời chúc, không phải tiền cúng dường hay để cầu may.
+          Xin lưu ý, đây là không gian thư giãn mang tinh thần an nhiên; quà tặng chỉ để nhận lời chúc, không phải tiền cúng dường hay để cầu may.
         </div>
       </div>
 
