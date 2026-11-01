@@ -11,9 +11,9 @@ The owner streams this on TikTok through TikTok LIVE Studio (Link source `http:/
 
 ## How it works
 
-- `server.ts`: Express + Vite middleware, `tiktok-live-connector` 2.5 (proto v3: chat text is `content`, gifts `gift.name/diamondCount/type`, avatar `user.avatarThumb.urlList[0]`, `enableExtendedGiftInfo: false`), SSE `/api/tiktok/events`, dashboard commands `/api/control` → SSE `control` (only stage pages act), Edge TTS `/api/tts`.
+- `server.ts`: Express + Vite middleware, `tiktok-live-connector` 2.5 (proto v3: chat text is `content`, gifts `gift.name/diamondCount/type`, avatar `user.avatarThumb.urlList[0]`, `enableExtendedGiftInfo: false`), SSE `/api/tiktok/events`, dashboard commands `/api/control` → SSE `control` (only stage pages act, except `setName` which every page applies), Edge TTS `/api/tts`. The channel name is saved to `settings.json` (gitignored) and replayed to every page on connect.
 - `src/App.tsx`: event handling, seating (`services/seating.ts`), merit board (1 point per comment, 10 per gift coin), like bar (666 likes = 60 s flower rain, counted from the room's total), greetings (batched every 6 s, 3 names per sentence, none dropped), gift thanks go to the front of the voice queue.
-- `src/services/soundEngine.ts`: voice queue (`priorityQueue` for gifts and "Đọc ngay"), lectures read sentence by sentence and nothing else speaks during them, `OFFERING_BLESSINGS` = the owner's 20 blessings (keep their wording).
+- `src/services/soundEngine.ts`: voice queue (`priorityQueue` for gifts and "Đọc ngay"), `OFFERING_BLESSINGS` = the owner's 20 blessings (keep their wording), `setChannelName` (every spoken self-reference uses the saved channel name, never a hard-coded one).
 - `src/components/ChanhDienStage.tsx`: the stage; incense offering queue (5 at once, once a minute per person).
 - `src/three/`: 3D devotees. `nguoi.fbx` (own rig) gets Mixamo clips retargeted (`retarget.ts`); bows are procedural; idle kneelers animate every third frame for speed.
 - `src/components/DevoteeCrowd.tsx`: seat grid (`SEATS`, generated rows), narrow walkway in the middle.
@@ -21,6 +21,6 @@ The owner streams this on TikTok through TikTok LIVE Studio (Link source `http:/
 ## Owner decisions to keep
 
 - Font `Lora` (`font-temple`). Background `public/assets/bg/chanh-dien-2-hd.webp` (Real-ESRGAN x4 upscale of `chanh-dien-2.webp`).
-- No voice for "adidaphat" offerers; only gift givers are named ("Tâm Tịnh Tâm An cảm ơn bạn X đã gửi quà tặng." + a family blessing). Never tie gifts to offerings, merit or luck, and never call it "chùa" or "cúng dường": it is a relaxation space for entertainment (legal reasons, owner decision 2026-11-01). Lectures are switched off by the owner.
+- No voice for "adidaphat" offerers; only gift givers are named ("Tâm Tịnh Tâm An cảm ơn bạn X đã gửi quà tặng." + a family blessing). Never tie gifts to offerings, merit or luck, and never call it "chùa" or "cúng dường": it is a relaxation space for entertainment (legal reasons, owner decision 2026-11-01). 
 - Join greeting: "A Di Đà Phật, Tâm Tịnh Tâm An xin chào bạn X vừa ghé vào."
-- Lectures are manual only.
+- Removed on purpose (2026-11-01): gift/wish simulator tab, dharma lectures, Gemini "AI dự báo" tab, report tab. Don't bring them back unasked.

@@ -38,7 +38,7 @@ export const LiveControlPanel: React.FC = () => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          placeholder="Nhập câu muốn đọc ngay, ví dụ: Con cảm ơn cả nhà đã ghé chùa tối nay ạ."
+          placeholder="Nhập câu muốn đọc ngay, ví dụ: Cảm ơn cả nhà đã ghé xem live tối nay ạ."
           className="flex-1 rounded-lg bg-stone-950 border border-stone-700 px-3 py-2 text-xs text-stone-100 placeholder:text-stone-500 focus:outline-none focus:border-amber-500"
         />
         <button
@@ -53,12 +53,6 @@ export const LiveControlPanel: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => send('startLecture')} className={buttonClass}>
-          📜 Thuyết giảng ngay
-        </button>
-        <button onClick={() => send('stopLecture')} className={buttonClass}>
-          ⏹ Dừng thuyết giảng
-        </button>
         <button onClick={() => send('shareReminder')} className={buttonClass}>
           📣 Nhắc chia sẻ ngay
         </button>

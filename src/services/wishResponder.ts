@@ -39,10 +39,10 @@ export function detectWish(comment: string): WishTopic | null {
   return null;
 }
 
-// "{name}" is filled with the spoken name
+// "{name}" is filled with the spoken name, "{channel}" with the channel name
 const BLESSINGS: Record<WishTopic, string[]> = {
   exam: [
-    'Dạ, Tâm Tịnh Tâm An nghe bạn {name} nhắc chuyện thi cử. Chúc bạn ôn bài suôn sẻ, vào phòng thi thật bình tĩnh, đạt điểm cao như mong muốn ạ.',
+    'Dạ, {channel} nghe bạn {name} nhắc chuyện thi cử. Chúc bạn ôn bài suôn sẻ, vào phòng thi thật bình tĩnh, đạt điểm cao như mong muốn ạ.',
     'A Di Đà Phật, chúc bạn {name} học đâu nhớ đó, thi cử đỗ đạt, kết quả làm cả nhà vui lòng ạ.',
   ],
   health: [
@@ -71,9 +71,9 @@ const BLESSINGS: Record<WishTopic, string[]> = {
   ],
 };
 
-export function blessingFor(topic: WishTopic, spokenName: string): string {
+export function blessingFor(topic: WishTopic, spokenName: string, channelName = 'Tâm Tịnh Tâm An'): string {
   const options = BLESSINGS[topic];
-  return options[Math.floor(Math.random() * options.length)].replace('{name}', spokenName);
+  return options[Math.floor(Math.random() * options.length)].replace('{name}', spokenName).replace('{channel}', channelName);
 }
 
 // One answered wish per person every 10 minutes, and at most one every 20 seconds overall

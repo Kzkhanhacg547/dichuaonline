@@ -9,7 +9,6 @@ import {
   LeaderboardEntry,
   CommentEvent,
   GiftCategory,
-  AiTrendReport,
   TikTokLiveStatus,
   OfferRequest,
 } from './types/temple';
@@ -17,7 +16,6 @@ import { soundEngine, formatUsernameForTts } from './services/soundEngine';
 import { maskBanned } from './services/bannedWords';
 import { detectWish, blessingFor, shouldAnswer } from './services/wishResponder';
 import { pickSeat } from './services/seating';
-import { DHARMA_LECTURES } from './data/dharmaLectures';
 import { LIKES_PER_RAIN } from './services/likeRain';
 
 const SHARE_REMINDER_MS = 5 * 60 * 1000;
@@ -25,6 +23,7 @@ const IDLE_BLESSING_MS = 90 * 1000; // voice quiet this long -> blessing + share
 const WELCOME_CHECK_MS = 6 * 1000;
 const MAX_WAITING_JOINERS = 30;
 const SEAT_AFTER_JOIN_MS = 10 * 1000;
+const DEFAULT_CHANNEL_NAME = 'Tâm Tịnh Tâm An'; // until the owner saves their own in the dashboard
 const SPOTLIGHT_COINS = 1; // any gift for now (small channel); raise when gifts get frequent
 const POINTS_PER_COIN = 10; // merit board: a 1-coin rose = 10 comments
 
@@ -32,8 +31,6 @@ const RAIN_MS = 60 * 1000;
 // Only the live stage page (Link source in LIVE Studio) makes sound by default; the dashboard stays silent so audio never doubles
 const pageParams = new URLSearchParams(window.location.search);
 const IS_STAGE_PAGE = pageParams.get('view') === 'stage' || pageParams.get('obs') === 'true';
-const DHARMA_NOTICE =
-  'Nam mô A Di Đà Phật. Kính thưa quý phật tử, sau đây mời quý vị cùng nghe một bài pháp ngắn. Xin giữ tâm an tịnh, cùng lắng nghe ạ.';
 
 const ROBE_COLORS = [
   '#38bdf8',
@@ -51,7 +48,7 @@ const ROBE_COLORS = [
 
 export default function App() {
   const [config, setConfig] = useState<StreamConfig>({
-    channelName: 'Thích Tâm An',
+    channelName: DEFAULT_CHANNEL_NAME,
     liveTitle: 'TÂM TỊNH TÂM AN',
     subTitle: 'Gõ "adidaphat" để vào lễ Phật',
     isConnected: true,
@@ -162,8 +159,6 @@ export default function App() {
   const [isGiftActive, setIsGiftActive] = useState<boolean>(false);
   const giftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [aiReport, setAiReport] = useState<AiTrendReport | null>(null);
-  const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
 
   // Who commented or gave a gift recently, for the named share reminder (latest last)
   const recentInteractorsRef = useRef<Map<string, number>>(new Map());
@@ -211,9 +206,6 @@ export default function App() {
     }
   }, []);
 
-  // Dharma lecture active state
-  const [activeDharmaTitle, setActiveDharmaTitle] = useState<string>('Giữ Tâm Thanh Tịnh');
-  const [activeDharmaText, setActiveDharmaText] = useState<string>('');
 
   // Real Buddhist music background lifecycle
   useEffect(() => {
@@ -224,36 +216,6 @@ export default function App() {
     }
   }, [config.bgmEnabled, config.buddhistMusicTrack, config.bgmVolume]);
 
-  const handleStartDharma = (lecture: { id: string; title: string; paragraphs: string[] }) => {
-    setConfig((prev) => ({
-      ...prev,
-      isDharmaLectureActive: true,
-      activeDharmaId: lecture.id,
-    }));
-    setActiveDharmaTitle(lecture.title);
-    setActiveDharmaText(lecture.paragraphs[0] || '');
-
-    soundEngine.startDharmaLecture(
-      lecture.paragraphs,
-      (idx) => {
-        setActiveDharmaText(lecture.paragraphs[idx]);
-        setConfig((prev) => ({ ...prev, activeDharmaParagraph: idx }));
-      },
-      () => {
-        setConfig((prev) => ({ ...prev, isDharmaLectureActive: false }));
-        setActiveDharmaText('');
-      }
-    );
-  };
-
-  const handleStopDharma = () => {
-    soundEngine.stopDharmaLecture();
-    setConfig((prev) => ({ ...prev, isDharmaLectureActive: false }));
-    setActiveDharmaText('');
-  };
-
-  // Lectures are started by hand only (dashboard / "Thuyết giảng ngay"), in order
-  const nextLectureRef = useRef(0);
 
   useEffect(() => {
     soundEngine.setSpeechRate(config.ttsSpeed);
@@ -280,7 +242,7 @@ export default function App() {
       diamondsPerUnit = 1,
       avatarUrl = ''
     ) => {
-      const cleanUser = username.trim() || 'Thí Chủ';
+      const cleanUser = username.trim() || 'Bạn';
       const now = Date.now();
       noteInteractor(cleanUser);
 
@@ -403,7 +365,7 @@ export default function App() {
     // Answer a prayer in the comment with a blessing for that topic (never during a lecture, rate-limited)
     const wish = detectWish(commentText);
     if (wish && config.autoTts && !soundEngine.isDharmaLecturePlaying() && shouldAnswer(cleanUser)) {
-      soundEngine.speakPreferredBuddhistVoice(blessingFor(wish, formatUsernameForTts(cleanUser)));
+      soundEngine.speakPreferredBuddhistVoice(blessingFor(wish, formatUsernameForTts(cleanUser), config.channelName));
     }
 
     setTimeout(() => {
@@ -485,15 +447,13 @@ export default function App() {
 
   // Commands sent from the dashboard; only the live stage page (?view=stage) acts, so sound never doubles
   const handleControl = (action: string, text?: string) => {
+    // The channel name applies on every page (dashboard field and the live stage's title and voice)
+    if (action === 'setName' && text) {
+      setConfig((prev) => ({ ...prev, channelName: text }));
+      soundEngine.setChannelName(text);
+    }
     if (!isStandaloneObs) return;
     if (action === 'speak' && text) soundEngine.speakNow(text);
-    if (action === 'startLecture') {
-      // A chosen lecture id comes in `text`; otherwise the next one in order
-      const lecture =
-        DHARMA_LECTURES.find((l) => l.id === text) ?? DHARMA_LECTURES[nextLectureRef.current++ % DHARMA_LECTURES.length];
-      handleStartDharma({ ...lecture, paragraphs: [DHARMA_NOTICE, ...lecture.paragraphs] });
-    }
-    if (action === 'stopLecture') handleStopDharma();
     if (action === 'shareReminder') remindShare();
     if (action === 'bell') handleRingBell();
     if (action === 'setRate' && Number(text) > 0) {
@@ -515,36 +475,6 @@ export default function App() {
     soundEngine.playMuoGong(0.85);
   };
 
-  const handleRefreshAiAnalysis = async () => {
-    setIsLoadingAi(true);
-    try {
-      const response = await fetch('/api/gemini/trends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comments: comments.slice(-20),
-          giftStats: {
-            diamonds: leaderboardDonors.reduce((a, b) => a + b.diamonds, 0),
-          },
-        }),
-      });
-      const result = await response.json();
-      if (result.success && result.data) {
-        setAiReport(result.data);
-      }
-    } catch {
-      setAiReport({
-        sentimentSummary: 'Đại chúng đang hướng tâm thanh tịnh gõ adidaphat cầu bình an và cát tường.',
-        prayerBreakdown: { peace: 50, wealth: 25, health: 15, family: 7, love: 3 },
-        predictedNextGift: 'Hoa Hồng (Cầu Bình An)',
-        suggestedBlessing: 'Nam mô A Di Đà Phật. Nguyện mười phương chư Phật gia hộ cho quý phật tử vạn sự an khang.',
-        monkChantSuggestion: 'Nam mô A Di Đà Phật - Tâm Tịnh Thì Thân An.',
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoadingAi(false);
-    }
-  };
 
   // Latest handlers via ref so the SSE connection opens once instead of on every render
   useEffect(() => {
@@ -587,7 +517,7 @@ export default function App() {
       eventSource.addEventListener('gift', (e) => {
         try {
           const data = JSON.parse(e.data);
-          const name = data.nickname || data.username || 'Thí chủ';
+          const name = data.nickname || data.username || 'Bạn';
           const rawGiftName = data.giftName || 'Hoa Sen';
           const diamondCount = data.diamondCount || 1;
           const repeatCount = data.repeatCount || 1;
@@ -776,9 +706,6 @@ export default function App() {
             onPlayGong={handlePlayGong}
             onToggleBgm={handleToggleBgm}
             isBgmPlaying={config.bgmEnabled}
-            activeDharmaTitle={activeDharmaTitle}
-            activeDharmaText={activeDharmaText}
-            onStopDharma={handleStopDharma}
           />
         </div>
       </div>
@@ -815,9 +742,6 @@ export default function App() {
                   onPlayGong={handlePlayGong}
                   onToggleBgm={handleToggleBgm}
                   isBgmPlaying={config.bgmEnabled}
-                  activeDharmaTitle={activeDharmaTitle}
-                  activeDharmaText={activeDharmaText}
-                  onStopDharma={handleStopDharma}
                 />
               </div>
             </div>
@@ -826,21 +750,8 @@ export default function App() {
             <div className="lg:col-span-7 h-[780px]">
               <StreamerDeck
                 config={config}
+                onSaveChannelName={(name) => sendControl('setName', name)}
                 onUpdateConfig={(updates) => setConfig((prev) => ({ ...prev, ...updates }))}
-                onTriggerGift={handleTriggerGift}
-                onAddComment={handleAddComment}
-                onAddDevotee={handleAddDevotee}
-                onResetCrowd={handleResetCrowd}
-                leaderboardDonors={leaderboardDonors}
-                devotees={devotees}
-                comments={comments}
-                aiReport={aiReport}
-                isLoadingAi={isLoadingAi}
-                onRefreshAiAnalysis={handleRefreshAiAnalysis}
-                onStartDharma={(lec) => sendControl('startLecture', lec.id)}
-                onStopDharma={() => sendControl('stopLecture')}
-                activeDharmaTitle={activeDharmaTitle}
-                activeDharmaText={activeDharmaText}
                 tikTokStatus={tikTokStatus}
                 onConnectTikTok={handleConnectTikTok}
                 onDisconnectTikTok={handleDisconnectTikTok}
@@ -867,9 +778,6 @@ export default function App() {
                 onPlayGong={handlePlayGong}
                 onToggleBgm={handleToggleBgm}
                 isBgmPlaying={config.bgmEnabled}
-                activeDharmaTitle={activeDharmaTitle}
-                activeDharmaText={activeDharmaText}
-                onStopDharma={handleStopDharma}
               />
             </div>
           </div>
@@ -877,21 +785,8 @@ export default function App() {
           <div className="flex-1 max-w-4xl mx-auto w-full h-[780px]">
             <StreamerDeck
               config={config}
+              onSaveChannelName={(name) => sendControl('setName', name)}
               onUpdateConfig={(updates) => setConfig((prev) => ({ ...prev, ...updates }))}
-              onTriggerGift={handleTriggerGift}
-              onAddComment={handleAddComment}
-              onAddDevotee={handleAddDevotee}
-              onResetCrowd={handleResetCrowd}
-              leaderboardDonors={leaderboardDonors}
-              devotees={devotees}
-              comments={comments}
-              aiReport={aiReport}
-              isLoadingAi={isLoadingAi}
-              onRefreshAiAnalysis={handleRefreshAiAnalysis}
-              onStartDharma={(lec) => sendControl('startLecture', lec.id)}
-              onStopDharma={() => sendControl('stopLecture')}
-              activeDharmaTitle={activeDharmaTitle}
-              activeDharmaText={activeDharmaText}
               tikTokStatus={tikTokStatus}
               onConnectTikTok={handleConnectTikTok}
               onDisconnectTikTok={handleDisconnectTikTok}

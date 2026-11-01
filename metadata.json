@@ -1,6 +1,0 @@
-{
-  "name": "Đi Chùa Online - TikTok LIVE Interactive Temple",
-  "description": "Ứng dụng tương tác livestream TikTok LIVE chánh điện chùa, tự tạo phật tử áo lam quỳ lạy, hiệu ứng dâng lễ hào quang Phật bừng sáng, bảng vàng công đức và âm thanh thiền tịnh.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

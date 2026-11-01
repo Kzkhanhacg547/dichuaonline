@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, Type } from '@google/genai';
+import fs from 'fs';
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
@@ -62,6 +62,7 @@ app.get('/api/tiktok/events', (req, res) => {
   res.write(`event: status\ndata: ${JSON.stringify(liveStats)}\n\n`);
   if (lastRateControl) res.write(`event: control\ndata: ${JSON.stringify(lastRateControl)}\n\n`);
 
+  if (lastNameControl) res.write(`event: control\ndata: ${JSON.stringify(lastNameControl)}\n\n`);
   sseClients.push(res);
 
   // Keep-alive heartbeat every 20s
@@ -274,7 +275,17 @@ app.post('/api/tiktok/connect', async (req, res) => {
 });
 
 // Streamer commands from the dashboard, relayed to the live stage page(s) that make the sound
-const CONTROL_ACTIONS = ['speak', 'startLecture', 'stopLecture', 'shareReminder', 'bell', 'setRate'];
+const CONTROL_ACTIONS = ['speak', 'shareReminder', 'bell', 'setRate', 'setName'];
+
+// The channel name (title + what the voice says) survives restarts in settings.json next to this file
+const SETTINGS_FILE = path.join(process.cwd(), 'settings.json');
+let lastNameControl: { action: string; text: string } | null = null;
+try {
+  const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+  if (typeof saved.channelName === 'string' && saved.channelName.trim()) lastNameControl = { action: 'setName', text: saved.channelName.trim() };
+} catch {
+  // no settings yet: the app's default name is used
+}
 // Last voice speed from the dashboard, replayed to stage pages that (re)load later
 let lastRateControl: { action: string; text: string } | null = null;
 app.post('/api/control', (req, res) => {
@@ -287,6 +298,18 @@ app.post('/api/control', (req, res) => {
   }
   const payload = { action, text: typeof text === 'string' ? text.trim().slice(0, 1000) : undefined };
   if (action === 'setRate' && payload.text) lastRateControl = { action, text: payload.text };
+  if (action === 'setName') {
+    // Plain name only: no control characters, at most 40 characters
+    const name = (payload.text || '').replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 40);
+    if (!name) return res.status(400).json({ success: false, error: 'Chưa nhập tên kênh' });
+    payload.text = name;
+    lastNameControl = { action, text: name };
+    try {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ channelName: name }, null, 2));
+    } catch (err) {
+      console.error('Could not save settings.json:', err);
+    }
+  }
   broadcastSSE('control', payload);
   return res.json({ success: true, stages: sseClients.length });
 });
@@ -315,15 +338,6 @@ app.post('/api/tiktok/disconnect', (_req, res) => {
   }
 });
 
-// Initialize Google GenAI
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || '',
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
 
 // Split at sentence/comma/space boundaries into pieces of at most `max` chars
 function splitTtsText(text: string, max = 190): string[] {
@@ -417,108 +431,6 @@ app.get('/api/tts', async (req, res) => {
 });
 
 // API Route: AI Real-Time Prayer & Trend Analysis
-app.post('/api/gemini/trends', async (req, res) => {
-  try {
-    const { comments = [], giftStats = {} } = req.body;
-
-    const sampleComments = comments
-      .slice(-25)
-      .map((c: { username: string; comment: string }) => `${c.username}: ${c.comment}`)
-      .join('\n');
-
-    const prompt = `Bạn là một trợ lý phân tích tâm linh và hành vi tương tác cho buổi phát sóng TikTok LIVE "Đi Chùa Online".
-Dưới đây là các bình luận và sự kiện cúng dường gần đây của phật tử xem live:
----
-Bình luận gần đây:
-${sampleComments || 'Chưa có nhiều bình luận (A di đà Phật, Cầu bình an, Cầu con thi đậu, Cầu tài lộc)...'}
-
-Thống kê cúng dường:
-- Kim Cương cúng dường: ${giftStats.diamonds || 0}
----
-Hãy phân tích:
-1. Tỷ lệ ước nguyện cầu an của đại chúng (bình an, tài lộc, sức khỏe, gia đạo, tình duyên) theo phần trăm tổng 100%.
-2. Tóm tắt tâm trạng và năng lượng chung của phòng live trong 1 câu trang nhã.
-3. Dự đoán loại quà cúng dường tiếp theo sẽ bùng nổ ("Hoa Hồng Cầu Bình An", "Hoa Sen Bách Gia" hay "Quả Đào").
-4. Một câu chúc phúc / hồi hướng công đức ngắn gọn (dưới 25 chữ) giọng miền Bắc ấm áp mang âm hưởng Phật giáo để streamer đọc cho đại chúng nghe.
-5. Gợi ý 1 câu niệm Phật phù hợp cho streamer xướng lên cùng người xem.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            sentimentSummary: {
-              type: Type.STRING,
-              description: 'Tóm tắt không khí trang nghiêm và tâm trạng đại chúng.',
-            },
-            prayerBreakdown: {
-              type: Type.OBJECT,
-              properties: {
-                peace: { type: Type.INTEGER, description: 'Phần trăm cầu bình an, giải hạn (0-100)' },
-                wealth: { type: Type.INTEGER, description: 'Phần trăm cầu tài lộc, kinh doanh may mắn (0-100)' },
-                health: { type: Type.INTEGER, description: 'Phần trăm cầu sức khỏe cho cha mẹ, người thân (0-100)' },
-                family: { type: Type.INTEGER, description: 'Phần trăm cầu gia đạo êm ấm (0-100)' },
-                love: { type: Type.INTEGER, description: 'Phần trăm cầu sớm có người yêu (0-100)' },
-              },
-              required: ['peace', 'wealth', 'health', 'family', 'love'],
-            },
-            predictedNextGift: {
-              type: Type.STRING,
-              description: 'Dự đoán quà tặng tiếp theo sẽ tăng vọt.',
-            },
-            suggestedBlessing: {
-              type: Type.STRING,
-              description: 'Lời chúc phúc hồi hướng ngắn gọn thanh tịnh giọng miền Bắc.',
-            },
-            monkChantSuggestion: {
-              type: Type.STRING,
-              description: 'Câu niệm Phật xướng lên cho streamer.',
-            },
-          },
-          required: [
-            'sentimentSummary',
-            'prayerBreakdown',
-            'predictedNextGift',
-            'suggestedBlessing',
-            'monkChantSuggestion',
-          ],
-        },
-      },
-    });
-
-    const parsed = JSON.parse(response.text || '{}');
-    return res.json({
-      success: true,
-      data: {
-        ...parsed,
-        timestamp: Date.now(),
-      },
-    });
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error('Error in /api/gemini/trends:', errorMsg);
-    return res.json({
-      success: true,
-      data: {
-        sentimentSummary: 'Đại chúng đang hướng tâm thanh tịnh cầu an lành và cát tường.',
-        prayerBreakdown: {
-          peace: 50,
-          wealth: 25,
-          health: 15,
-          family: 7,
-          love: 3,
-        },
-        predictedNextGift: 'Hoa Hồng (Cầu Bình An)',
-        suggestedBlessing: 'Nam mô A Di Đà Phật. Nguyện mười phương chư Phật gia hộ cho quý phật tử vạn sự an khang.',
-        monkChantSuggestion: 'Nam mô A Di Đà Phật - Tâm Tịnh Thì Thân An.',
-        timestamp: Date.now(),
-      },
-    });
-  }
-});
 
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
@@ -540,7 +452,7 @@ async function startServer() {
 
   // Loopback only: the dashboard, the stage page and LIVE Studio all run on this computer (lvh.me resolves to
   // 127.0.0.1). Listening on every interface let anyone on the same Wi-Fi make the live voice say anything via
-  // /api/control, switch the TikTok room, or use the TTS/Gemini routes. The API has no login, so keep it local.
+  // /api/control, switch the TikTok room, or use the TTS route. The API has no login, so keep it local.
   app.listen(PORT, '127.0.0.1', () => {
     console.log(`Chùa Online LIVE server running on http://localhost:${PORT}`);
   });

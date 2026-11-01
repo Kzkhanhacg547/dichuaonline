@@ -32,9 +32,6 @@ interface ChanhDienStageProps {
   onPlayGong: () => void;
   onToggleBgm?: () => void;
   isBgmPlaying?: boolean;
-  activeDharmaTitle?: string;
-  activeDharmaText?: string;
-  onStopDharma?: () => void;
   likeProgress?: number; // likes toward the next flower rain
   rainUntil?: number; // flower rain lasts until this time (ms)
   spotlightRequests?: OfferRequest[]; // gift givers the camera follows up close
@@ -56,9 +53,6 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
   onPlayGong,
   onToggleBgm,
   isBgmPlaying = true,
-  activeDharmaTitle,
-  activeDharmaText,
-  onStopDharma,
   likeProgress = 0,
   rainUntil = 0,
   spotlightRequests = [],
@@ -267,7 +261,7 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
           className="text-2xl sm:text-3xl font-black tracking-widest font-temple uppercase bg-linear-to-b from-[#FFFDF0] via-[#FDE047] to-[#B45309] bg-clip-text text-transparent filter drop-shadow-[0_2px_10px_rgba(245,158,11,1)] text-center"
           style={{ letterSpacing: '0.18em' }}
         >
-          {config.liveTitle || 'TÂM TỊNH TÂM AN'}
+          {config.channelName}
         </h1>
         <div className="mt-0.5 text-[13px] font-semibold text-[#f3d08a] font-temple tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           Nam Mô A Di Đà Phật
@@ -278,18 +272,6 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
       <LikeBar progress={likeProgress} goal={LIKES_PER_RAIN} raining={raining} />
       <FlowerRain until={rainUntil} />
       <CraneFlight />
-
-      {/* 6. DHARMA LECTURE BANNER (Shown when Thuyết Giảng is Active) */}
-      {/* Small corner notice so the Buddha stays visible during the 20-minute lecture */}
-      {config.isDharmaLectureActive && (
-        <div className="absolute top-[14.5%] left-1/2 -translate-x-1/2 z-35 max-w-[52%] px-2.5 py-1.5 rounded-lg bg-black/70 border border-amber-400/60 backdrop-blur-md animate-fade-in">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-300">
-            <span>📜</span>
-            <span>Thuyết giảng Phật pháp</span>
-          </div>
-          <div className="mt-0.5 text-[9px] text-amber-100/90 truncate">{activeDharmaTitle}</div>
-        </div>
-      )}
 
       {/* 7. OFFERING AREA (burner, chủ lễ, 4 mats, top 6) and the side rows of devotees */}
       {/* Floor (carpet, burner, lotus, mats) under the 3D people; names and chat bubbles over them */}
@@ -343,15 +325,13 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
       {/* 8. GIFT NOTIFICATION BANNER WITH COMBO MULTIPLIER */}
       <GiftNotificationBanner currentGift={currentGift} />
 
-      {/* 9. DISCREET STREAMER SOUND SHORTCUTS (Chuông, Mõ, Nhạc Phật Giáo & Thuyết Pháp) */}
+      {/* 9. DISCREET STREAMER SOUND SHORTCUTS (Chuông, Mõ, Nhạc nền) */}
       <div className="absolute bottom-0 inset-x-0 z-150 px-3 pb-3 pt-1 flex items-center justify-between pointer-events-auto">
         {/* Real Buddhist Music status indicator */}
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 border border-amber-500/40 text-[10px] text-stone-200 backdrop-blur-md">
           <span className={`w-2 h-2 rounded-full ${isBgmPlaying ? 'bg-amber-400 animate-pulse' : 'bg-stone-600'}`} />
           <span className="font-medium truncate max-w-[190px]">
-            {config.isDharmaLectureActive
-              ? '📜 Đang thuyết pháp'
-              : isBgmPlaying
+            {isBgmPlaying
               ? config.buddhistMusicTrack === 'chill'
                 ? '🍃 Nhạc chill thư giãn'
                 : config.buddhistMusicTrack === 'niem_phat'

@@ -10,6 +10,6 @@ coverage/
 # local tooling, test files
 .claude/
 .impeccable/
-.aistudio/
 giong-mau/
 public/font-samples.html
+settings.json

@@ -20,7 +20,7 @@ import { containsBanned } from './bannedWords';
  */
 
 export function formatUsernameForTts(username: string): string {
-  if (!username) return 'thí chủ';
+  if (!username) return 'bạn';
 
   // Read the name only: fancy letters (𝑵𝒈𝒖𝒚𝒆̂̃𝒏) become plain, emoji and symbols (💥🌑❤) are dropped
   let clean = username
@@ -640,7 +640,7 @@ class SoundEngine {
   }
 
   /**
-   * "Tâm Tịnh Tâm An cảm ơn bạn X đã gửi quà tặng." plus a random family blessing, read before anything else waiting.
+   * "<channel name> cảm ơn bạn X đã gửi quà tặng." plus a random family blessing, read before anything else waiting.
    * (Gifts are thanked as gifts, never as offerings to the Buddha: the on-screen notice says they are not.)
    * Combos and repeat gifts from the same person are thanked once per 30s (gifts of 99+ coins are always thanked).
    */
@@ -653,7 +653,7 @@ class SoundEngine {
     this.lastGiftAckMap.set(key, now);
 
     // Gift givers go first: read right after the sentence playing now, ahead of greetings and other lines
-    this.priorityQueue.push(`Tâm Tịnh Tâm An cảm ơn bạn ${formatUsernameForTts(username)} đã gửi quà tặng.`);
+    this.priorityQueue.push(`${this.channelName} cảm ơn bạn ${formatUsernameForTts(username)} đã gửi quà tặng.`);
     this.priorityQueue.push(FAMILY_BLESSINGS[Math.floor(Math.random() * FAMILY_BLESSINGS.length)]);
     if (!this.isSpeaking) this.processQueue();
   }
@@ -704,17 +704,23 @@ class SoundEngine {
     if (names.length === 0 || this.isDharmaActive) return;
     const spoken = names.map((n) => `bạn ${formatUsernameForTts(n)}`);
     const list = spoken.length > 1 ? `${spoken.slice(0, -1).join(', ')} và ${spoken[spoken.length - 1]}` : spoken[0];
-    this.speakPreferredBuddhistVoice(`A Di Đà Phật, Tâm Tịnh Tâm An xin chào ${list} vừa ghé vào.`);
+    this.speakPreferredBuddhistVoice(`A Di Đà Phật, ${this.channelName} xin chào ${list} vừa ghé vào.`);
   }
 
   private lastBlessingIndex = -1;
+
+  // The name the voice uses for the channel (dashboard "Tên kênh"; default until the owner saves one)
+  private channelName = 'Tâm Tịnh Tâm An';
+  public setChannelName(name: string) {
+    this.channelName = name.trim() || this.channelName;
+  }
 
   // One of the 20 offering blessings, never the same one twice in a row
   private pickBlessing() {
     let i = Math.floor(Math.random() * OFFERING_BLESSINGS.length);
     if (i === this.lastBlessingIndex) i = (i + 1) % OFFERING_BLESSINGS.length;
     this.lastBlessingIndex = i;
-    return OFFERING_BLESSINGS[i];
+    return OFFERING_BLESSINGS[i].replace('Tâm Tịnh Tâm An', this.channelName);
   }
 
 
@@ -737,7 +743,7 @@ class SoundEngine {
       const spoken = recentNames.map((n) => `bạn ${formatUsernameForTts(n)}`);
       const list = spoken.length > 1 ? `${spoken.slice(0, -1).join(', ')} và ${spoken[spoken.length - 1]}` : spoken[0];
       this.speakPreferredBuddhistVoice(
-        `Dạ, Tâm Tịnh Tâm An cảm ơn ${list} đã ghé chơi. Quý vị nhớ bấm chia sẻ live cho bạn bè, người thân cùng nghe nhé. ${this.pickWish(recentNames.length > 1 ? 'quý vị' : 'bạn')}`
+        `Dạ, ${this.channelName} cảm ơn ${list} đã ghé chơi. Quý vị nhớ bấm chia sẻ live cho bạn bè, người thân cùng nghe nhé. ${this.pickWish(recentNames.length > 1 ? 'quý vị' : 'bạn')}`
       );
       return;
     }

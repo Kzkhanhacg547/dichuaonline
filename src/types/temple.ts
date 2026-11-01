@@ -1,5 +1,5 @@
 /**
- * Types for Đi Chùa Online - TikTok LIVE Interactive Temple
+ * Types for Đi Chùa Online, an interactive relaxation stage for TikTok LIVE
  * Updated to match the "TÂM TỊNH TÂM AN" aesthetic and Vietnamese Buddhist Female Voice.
  */
 
