@@ -193,7 +193,7 @@ class Actor {
   constructor(assets: DevoteeAssets) {
     const body = cloneSkinned(assets.model);
     this.root.add(body);
-    const bend: Record<string, number> = { Spine: 0.5, Spine1: 0.45, Spine2: 0.35, Chest: 0.45, Neck: 0.2, Head: 0.15 }; // radians at full bow
+    const bend: Record<string, number> = { Spine: 0.7, Spine1: 0.6, Spine2: 0.45, Chest: 0.6, Neck: 0.25, Head: 0.2 }; // radians at full bow (deep, forehead toward the floor)
     body.traverse((o) => {
       if (!this.hand && /(RightHand|HandR)$/.test(o.name)) this.hand = o;
       if (!this.head && /(^|:)Head$/.test(o.name)) this.head = o;
@@ -260,8 +260,8 @@ class Actor {
   kneelHere(withKneelDown: boolean) {
     this.root.rotation.y = Math.PI;
     this.state = 'kneeling';
-    // Everyone bows over and over on their own clock: a random first start, then 1-3 s of rest between lạy,
-    // so the hall is always bowing but never in unison
+    // Everyone bows over and over on their own clock: a random first start, then a short rest between lạy,
+    // so the hall is always bowing but never in unison (0.5-1.5 s rest)
     this.nextBowIn = Math.random() * 4;
     if (withKneelDown && this.actions.kneelDown) this.play('kneelDown', 0.3);
     else this.play('kneel', 0.3, true);
@@ -346,7 +346,7 @@ class Actor {
       this.nextBowIn -= dt;
       if (this.nextBowIn <= 0 && this.bowT < 0) {
         this.bowT = 0;
-        this.nextBowIn = this.bowsAtBurner > 0 ? 0.4 : 1 + Math.random() * 2;
+        this.nextBowIn = this.bowsAtBurner > 0 ? 0.4 : 0.5 + Math.random();
       }
     }
     this.applyBow(dt);
