@@ -146,7 +146,7 @@ export const ChanhDienStage: React.FC<ChanhDienStageProps> = ({
 
 
   // Exact background path uploaded by the user
-  const templeBgUrl = '/assets/bg/chanh-dien-2.webp'; // old painting kept at chanh-dien.jpg
+  const templeBgUrl = '/assets/bg/chanh-dien-2-hd.webp'; // AI-upscaled (Real-ESRGAN x4) from chanh-dien-2.webp
 
   return (
     <div

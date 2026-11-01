@@ -20,7 +20,7 @@ The owner streams this on TikTok through TikTok LIVE Studio (Link source `http:/
 
 ## Owner decisions to keep
 
-- Font `Lora` (`font-temple`). Background `public/assets/bg/chanh-dien-2.webp`.
+- Font `Lora` (`font-temple`). Background `public/assets/bg/chanh-dien-2-hd.webp` (Real-ESRGAN x4 upscale of `chanh-dien-2.webp`).
 - No voice for "adidaphat" offerers; only gift givers are named ("Phật tử X vừa thành tâm dâng lễ lên Đức Phật." + a family blessing). Avoid the word "cúng dường".
 - Join greeting: "A Di Đà Phật, chùa xin chào bạn X vừa ghé vào."
 - Lectures are manual only.
